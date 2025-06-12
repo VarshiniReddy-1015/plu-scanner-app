@@ -118,7 +118,6 @@ function checkPLU() {
       <p><strong>Type:</strong> ${fruit.type}</p>
       <p>${fruit.desc}</p>
     `;
-    // Speak the fruit name and type using Web Speech API
     const msg = new SpeechSynthesisUtterance(`${fruit.name}. This is ${fruit.type.replace(/[^a-zA-Z ]/g, '')}.`);
     window.speechSynthesis.speak(msg);
   } else {
@@ -143,9 +142,7 @@ function startScanner() {
       checkPLU();
       stopScanner();
     },
-    (errorMessage) => {
-      // console.log(`Scan error: ${errorMessage}`);
-    }
+    (errorMessage) => {}
   ).catch((err) => {
     console.error("Scanner failed to start", err);
     const resultDiv = document.getElementById("result");
@@ -163,3 +160,37 @@ function stopScanner() {
     });
   }
 }
+
+// 🍌 Fruit Quality Detection using Teachable Machine
+const modelURL = "https://teachablemachine.withgoogle.com/models/JPx6fCZm9/"; // Replace with your model URL
+let model, webcam, maxPredictions;
+
+async function loadModel() {
+  const modelJson = modelURL + "model.json";
+  const metadataJson = modelURL + "metadata.json";
+  model = await tmImage.load(modelJson, metadataJson);
+  maxPredictions = model.getTotalClasses();
+
+  const flip = true;
+  webcam = new tmImage.Webcam(224, 224, flip);
+  await webcam.setup();
+  await webcam.play();
+  window.requestAnimationFrame(updateWebcam);
+  document.getElementById("webcam").replaceWith(webcam.canvas);
+  webcam.canvas.id = "webcam";
+}
+
+async function updateWebcam() {
+  webcam.update();
+  window.requestAnimationFrame(updateWebcam);
+}
+
+async function detectQuality() {
+  const prediction = await model.predict(webcam.canvas);
+  prediction.sort((a, b) => b.probability - a.probability);
+  const top = prediction[0];
+  document.getElementById("quality-result").innerHTML =
+    `Fruit Quality: <strong>${top.className}</strong> (${(top.probability * 100).toFixed(2)}%)`;
+}
+
+window.addEventListener("load", loadModel);
